@@ -2,6 +2,7 @@
 	// Components for working with Mapbox layers
 	import { Map, MapSource, MapLayer, MapTooltip } from '@onsvisual/svelte-maps';
 	import MapCount from "./MapCount.svelte";
+	import BreaksChart from "./BreaksChart.svelte";
 	import { getData, getColor, getBreaks } from "./utils";
 	import { colors, mapSources, baseMaps, bounds , layerNames } from "./config";
 	
@@ -10,9 +11,11 @@
 
 	// Data
 	let data = {};
+	let breaks = {};
 	let centroids;
 	let count = 0;
 	let active = "rgn";
+	let value = null;
 
 	// State
 	let hovered;
@@ -40,17 +43,22 @@
 			});
 
 			let vals = arr.map(d => d.perc).sort((a, b) => a - b);
-			let breaks = getBreaks(vals);
-			console.log(vals, breaks);
+			let brks = getBreaks(vals);
 
 			arr.forEach(d => {
-				d.color = getColor(d.perc, breaks, colors.seq5);
+				d.color = getColor(d.perc, brks, colors.seq5);
 			});
 			console.log(arr);
 
 			data[key] = arr;
+			breaks[key] = brks;
 		});
 	});
+
+	function doHover(e) {
+		hovered = e.detail.feature ? e.detail.feature.properties : null;
+		value = hovered && data[active] ? data[active].find(d => d.areacd == hovered['areacd'] || d.areacd == hovered['AREACD'] || d.areacd == hovered['oa11cd']).perc : null;
+	}
 
 	function toggleLayers(count) {
 		if (map) {
@@ -64,16 +72,18 @@
 			}
 		}
 	}
-
 	$: toggleLayers(count);
 	
 </script>
 
 <section>
 	<div class="wrapper">
-    <h1>OA map test</h1>
+    <h1>Output area map test</h1>
 		{count.toLocaleString()} MSOA centroids in view
-		| {layerNames[active]} layer visible
+		| {layerNames[active]} layer visible<br/>
+		{#if data[active] && breaks[active]}
+		<BreaksChart breaks={breaks[active]} {value} suffix="%"/>
+		{/if}
   </div>
 </section>
 
@@ -86,7 +96,7 @@
 					<MapSource {...source}>
 						{#if data[source.id]}
 						{#each source.layers as layer}
-						<MapLayer {...layer} data={data[source.id]} order="mask-raster" hover on:hover={(e) => hovered = e.detail.feature.properties}>
+						<MapLayer {...layer} data={data[source.id]} order="mask-raster" hover on:hover={doHover}>
 							<MapTooltip content={hovered && hovered.areanm ? hovered.areanm : hovered && hovered.AREANM ? hovered.AREANM : hovered ? hovered.oa11cd : ""}/>
 						</MapLayer>
 						<MapLayer
@@ -153,6 +163,6 @@
 		justify-content: stretch;
 	}
 	.map {
-		height: 400px;
+		height: 450px;
 	}
 </style>
