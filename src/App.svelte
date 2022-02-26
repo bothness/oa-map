@@ -1,9 +1,11 @@
 <script>
 	// Components for working with Mapbox layers
 	import { Map, MapSource, MapLayer, MapTooltip } from '@onsvisual/svelte-maps';
+	import tilebelt from "@mapbox/tilebelt";
 	import MapCount from "./MapCount.svelte";
+	import MapCodes from "./MapCodes.svelte";
 	import BreaksChart from "./BreaksChart.svelte";
-	import { getData, getColor, getBreaks } from "./utils";
+	import { getData, getColor, setUnion, setDifference, sleep } from "./utils";
 	import { colors, mapSources, baseMaps, bounds , layerNames } from "./config";
 	
 	// Bindings
@@ -11,8 +13,9 @@
 
 	// Data
 	let data = {};
+	let data_quads = {};
 	let breaks = {};
-	let centroids;
+	let quads = {};
 	let count = 0;
 	let active = "rgn";
 	let value = null;
@@ -20,49 +23,81 @@
 	// State
 	let hovered;
 
-	// Get MSOA centroids
-	getData("./data/msoa-centroids.csv")
-	.then(arr => {
-		let features = arr.map(d => ({
-			"type": "Feature",
-			"geometry": {
-				"type": "Point",
-				"coordinates": [d.x, d.y]
-			}
-		}));
-		count = features.length;
-		centroids = {"type": "FeatureCollection", features};
+	// Get data tiles
+	fetch("./data/quads.json")
+	.then(res => res.json())
+	.then(json => {
+		for (const key in json) {
+			let features = json[key].map(d => ({
+				type: "Feature",
+				geometry: tilebelt.tileToGeoJSON(d),
+				properties: {
+					code: d.join("_")
+				}
+			}));
+			quads[key] = {
+				"type": "FeatureCollection",
+				features
+			};
+		}
 	});
 	
-	// Get data for geojson maps
-	mapSources.map(d => d.id).forEach(key => {
-		getData(`./data/ownership-${key}.csv`)
-		.then(arr => {
-			arr.forEach(d => {
-				d.perc = Math.round((d.value / d.total) * 10000) / 100;
-			});
+	// Get data for map
+	fetch("./data/ownership/breaks.json")
+	.then(res => res.json())
+	.then(brks => {
+		mapSources.map(d => d.id).forEach(key => {
+			breaks[key] = brks[key];
 
-			let vals = arr.map(d => d.perc).sort((a, b) => a - b);
-			let brks = getBreaks(vals);
+			if (["rgn", "lad"].includes(key)) {
+				getData(`./data/ownership/${key}.csv`)
+				.then(arr => {
+					arr.forEach(d => {
+						d.perc = Math.round((d.value / d.total) * 10000) / 100;
+						d.color = getColor(d.perc, breaks[key], colors.seq5);
+					});
 
-			arr.forEach(d => {
-				d.color = getColor(d.perc, brks, colors.seq5);
-			});
-			console.log(arr);
-
-			data[key] = arr;
-			breaks[key] = brks;
+					data[key] = arr;
+				});
+			} else {
+				data[key] = [];
+				data_quads[key] = new Set([]);
+			}
 		});
 	});
 
 	function doHover(e) {
 		hovered = e.detail.feature ? e.detail.feature.properties : null;
-		value = hovered && data[active] ? data[active].find(d => d.areacd == hovered['areacd'] || d.areacd == hovered['AREACD'] || d.areacd == hovered['oa11cd']).perc : null;
+		let key = mapSources.find(d => d.id == active).promoteId;
+		let feature = hovered && data[active] ? data[active].find(d => d.areacd == hovered[key]) : null;
+		value = feature ? feature.perc : null;
+	}
+
+	function loadData(e, key) {
+		sleep(50).then(() => {
+			if (key == active) {
+				let codes = new Set(e.detail.codes);
+				let diff = setDifference(codes, data_quads[key]);
+				data_quads[key] = setUnion(data_quads[key], codes);
+
+				diff.forEach(code => {
+					getData(`./data/ownership/${key}-${code}.csv`)
+					.then(arr => {
+						arr.forEach(d => {
+							d.perc = Math.round((d.value / d.total) * 10000) / 100;
+							d.color = getColor(d.perc, breaks[key], colors.seq5);
+						});
+						data[key].push(...arr);
+						data[key] = [...data[key]];
+					});
+				});
+			}
+		});
 	}
 
 	function toggleLayers(count) {
 		if (map) {
-			let newactive = count > 7000 ? "rgn" : count > 1000 ? "lad" : count > 250 ? "msoa" : count > 50 ? "lsoa" : "oa";
+			let newactive = count > 450 ? "rgn" : count > 64 ? "lad" : count > 16 ? "msoa" : count > 4 ? "lsoa" : "oa";
 			if (newactive != active) {
 				if (map.getLayer(newactive)) map.setLayoutProperty(newactive, 'visibility', 'visible');
 				if (map.getLayer(`${newactive}-line`)) map.setLayoutProperty(`${newactive}-line`, 'visibility', 'visible');
@@ -79,7 +114,7 @@
 <section>
 	<div class="wrapper">
     <h1>Output area map test</h1>
-		{count.toLocaleString()} MSOA centroids in view
+		{count.toLocaleString()} OA quads in view
 		| {layerNames[active]} layer visible<br/>
 		{#if data[active] && breaks[active]}
 		<BreaksChart breaks={breaks[active]} {value} suffix="%"/>
@@ -117,12 +152,16 @@
 						{/if}
 					</MapSource>
 					{/each}
-					{#if centroids}
-					<MapSource id="centroids" type="geojson" data={centroids}>
-						<MapLayer id="centroids" type="circle" paint={{'circle-radius': 1, 'circle-color': 'rgba(0,0,0,0)'}}/>
-						<MapCount layer="centroids" bind:count/>
+					{#each ['msoa', 'lsoa', 'oa'] as key}
+					{#if quads[key]}
+					<MapSource id="{key}-quads" type="geojson" data={quads[key]}>
+						<MapLayer id="{key}-quads" type="line" paint={{'line-color': 'rgba(0,0,0,0)'}}>
+							<MapCodes on:moveend={e => loadData(e, key)}/>
+								{#if key == "oa"}<MapCount bind:count/>{/if}
+						</MapLayer>
 					</MapSource>
 					{/if}
+					{/each}
 			  </Map>
 			</div>
 		</div>

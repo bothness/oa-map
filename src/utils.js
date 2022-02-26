@@ -1,5 +1,6 @@
 import { csvParse, autoType } from 'd3-dsv';
 import { feature } from 'topojson-client';
+import ckmeans from 'ckmeans';
 
 export async function getData(url) {
   let response = await fetch(url);
@@ -30,15 +31,32 @@ export function getColor(value, breaks, colors) {
   return color ? color : 'lightgrey';
 }
 
-export function getBreaks(vals) {
-	let len = vals.length;
-	let breaks = [
-		vals[0],
-		vals[Math.floor(len * 0.2)],
-		vals[Math.floor(len * 0.4)],
-		vals[Math.floor(len * 0.6)],
-		vals[Math.floor(len * 0.8)],
-		vals[len - 1]
-	];
+export function getBreaks(vals, count=5) {
+  let len = vals.length;
+  let sorted = [...vals].sort((a, b) => a - b);
+  let breaks = ckmeans(sorted, count);
+	breaks.push(sorted[len - 1]);
 	return breaks;
+}
+
+export function setUnion(setA, setB) {
+  console.log(setA, setB)
+  let _union = new Set(setA)
+  for (let elem of setB) {
+      _union.add(elem)
+  }
+  return _union
+}
+
+export function setDifference(setA, setB) {
+  console.log(setA, setB)
+  let _difference = new Set(setA)
+  for (let elem of setB) {
+      _difference.delete(elem)
+  }
+  return _difference
+}
+
+export function sleep (ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
