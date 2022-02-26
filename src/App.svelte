@@ -16,6 +16,7 @@
 	let data_quads = {};
 	let breaks = {};
 	let quads = {};
+	let quads_show = false;
 	let count = 0;
 	let active = "rgn";
 	let value = null;
@@ -23,7 +24,7 @@
 	// State
 	let hovered;
 
-	// Get data tiles
+	// Get data quads
 	fetch("./data/quads.json")
 	.then(res => res.json())
 	.then(json => {
@@ -39,6 +40,7 @@
 				"type": "FeatureCollection",
 				features
 			};
+			if (key == "oa") count = features.length;
 		}
 	});
 	
