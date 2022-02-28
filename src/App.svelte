@@ -134,7 +134,7 @@
 						{#if data[source.id]}
 						{#each source.layers as layer}
 						<MapLayer {...layer} data={data[source.id]} order="mask-raster" hover on:hover={doHover}>
-							<MapTooltip content={hovered && hovered.areanm ? hovered.areanm : hovered && hovered.AREANM ? hovered.AREANM : hovered ? hovered.oa11cd : ""}/>
+							<MapTooltip content={hovered && hovered.areanm ? hovered.areanm : hovered && hovered.areacd ? hovered.areacd : ""}/>
 						</MapLayer>
 						<MapLayer
 							id="{source.id}-line"
