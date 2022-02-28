@@ -5,7 +5,7 @@
 	import MapCount from "./MapCount.svelte";
 	import MapCodes from "./MapCodes.svelte";
 	import BreaksChart from "./BreaksChart.svelte";
-	import { getData, getColor, setUnion, setDifference, sleep } from "./utils";
+	import { getData, getColor, getCentroid, setUnion, setDifference, sleep } from "./utils";
 	import { colors, mapSources, baseMaps, bounds , layerNames } from "./config";
 	
 	// Bindings
@@ -17,14 +17,17 @@
 	let breaks = {};
 	let quads = {};
 	let quads_show = false;
-	let count = 0; // Number of OA quads in view
-	let loaded = 0; // Number of features data has been loaded for
-	let files = 0; // Number of source data files loaded
-	let active = "rgn";
-	let value = null;
+	let centroids; // Centroids for OA quads (used to calculate which layer to display)
 
 	// State
 	let hovered;
+	let selected;
+	let count = 0; // Number of OA quads in view
+	let loaded = 0; // Number of features data has been loaded for
+	let files = 0; // Number of source data files loaded
+	let active = "rgn"; // Active layer
+	let hovered_val = null;
+	let selected_val = null;
 
 	// Get data quads
 	fetch("./data/quads.json")
@@ -39,10 +42,16 @@
 				}
 			}));
 			quads[key] = {
-				"type": "FeatureCollection",
+				type: "FeatureCollection",
 				features
 			};
-			if (key == "oa") count = features.length;
+			if (key == "oa") {
+				centroids = {
+					type: "FeatureCollection",
+					features: features.map(d => getCentroid(d))
+				};
+				count = features.length;
+			}
 		}
 	});
 	
@@ -75,8 +84,29 @@
 	function doHover(e) {
 		hovered = e.detail.feature ? e.detail.feature.properties : null;
 		let key = mapSources.find(d => d.id == active).promoteId;
-		let feature = hovered && data[active] ? data[active].find(d => d.areacd == hovered[key]) : null;
-		value = feature ? feature.perc : null;
+		let data_obj = hovered && data[active] ? data[active].find(d => d.areacd == hovered[key]) : null;
+		hovered_val = data_obj ? data_obj.perc : null;
+	}
+
+	function doSelect(e) {
+		let feature = e.detail.feature ? e.detail.feature : null;
+		selected = feature ? feature.properties : null;
+
+		let source = map.getSource("selected");
+		if (feature && source) {
+			fetch(`https://raw.githubusercontent.com/bothness/geo-bounds/main/output/${feature.id}.geojson`)
+			.then(res => res.json())
+			.then(json => {
+				source.setData(json);
+
+				let bounds = [[json.properties.minx, json.properties.miny], [json.properties.maxx, json.properties.maxy]];
+				map.fitBounds(bounds, {padding: 20});
+			});
+		}
+
+		let key = mapSources.find(d => d.id == active).promoteId;
+		let data_obj = hovered && data[active] ? data[active].find(d => d.areacd == hovered[key]) : null;
+		selected_val = data_obj ? data_obj.perc : null;
 	}
 
 	function loadData(e, key) {
@@ -105,7 +135,7 @@
 
 	function toggleLayers(count) {
 		if (map) {
-			let newactive = count > 450 ? "rgn" : count > 64 ? "lad" : count > 16 ? "msoa" : count > 4 ? "lsoa" : "oa";
+			let newactive = count > 400 ? "rgn" : count > 40 ? "lad" : count > 6 ? "msoa" : count > 1 ? "lsoa" : "oa";
 			if (newactive != active) {
 				const layers = ["rgn", "lad", "msoa", "lsoa", "oa"];
 
@@ -147,10 +177,10 @@
     <h1>Output area map test</h1>
 		<strong>{layerNames[active]} layer visible</strong>
 		| Data loaded for {loaded.toLocaleString()} features from {files.toLocaleString()} data files<br/>
-		{count.toLocaleString()} OA quads in view
+		{count.toLocaleString()} OA quad centoids in view
 		| <label><input type="checkbox" bind:checked={quads_show} on:change={toggleQuads}/> Show quad boudaries (MSOA/LSOA/OA only)</label><br/>
 		{#if data[active] && breaks[active]}
-		<BreaksChart breaks={breaks[active]} {value} suffix="%"/>
+		<BreaksChart breaks={breaks[active]} hovered={hovered_val} selected={selected_val} suffix="%"/>
 		{/if}
   </div>
 </section>
@@ -164,7 +194,7 @@
 					<MapSource {...source}>
 						{#if data[source.id]}
 						{#each source.layers as layer}
-						<MapLayer {...layer} data={data[source.id]} order="mask-raster" hover on:hover={doHover}>
+						<MapLayer {...layer} data={data[source.id]} order="mask-raster" hover on:hover={doHover} select on:select={doSelect}>
 							<MapTooltip content={hovered && hovered.areanm ? hovered.areanm : hovered && hovered.areacd ? hovered.areacd : ""}/>
 						</MapLayer>
 						<MapLayer
@@ -172,7 +202,7 @@
 							type="line"
 							paint={{
 								'line-color': ['case',
-				  				['==', ['feature-state', 'hovered'], true], 'black',
+				  				['==', ['feature-state', 'hovered'], true], 'orange',
 				  				'rgba(0,0,0,0.2)'
 				  			],
 								'line-width': ['case',
@@ -185,12 +215,21 @@
 						{/if}
 					</MapSource>
 					{/each}
+					<MapSource id="selected" type="geojson" data={{'type': 'FeatureCollection', 'features': []}}>
+						<MapLayer id="selected" type="line" paint={{'line-color': 'black', 'line-width': 2.5}}/>
+					</MapSource>
 					{#each ['msoa', 'lsoa', 'oa'] as key}
 					{#if quads[key]}
 					<MapSource id="{key}-quads" type="geojson" data={quads[key]}>
 						<MapLayer id="{key}-quads" type="line" paint={{'line-color': 'rgba(0,0,0,0)'}}>
 							<MapCodes on:moveend={e => loadData(e, key)}/>
-								{#if key == "oa"}<MapCount bind:count/>{/if}
+						</MapLayer>
+					</MapSource>
+					{/if}
+					{#if centroids}
+					<MapSource id="centroids" type="geojson" data={centroids}>
+						<MapLayer id="centroids" type="circle" paint={{'circle-color': 'rgba(0,0,0,0)'}}>
+							<MapCount bind:count/>
 						</MapLayer>
 					</MapSource>
 					{/if}

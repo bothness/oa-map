@@ -2,7 +2,7 @@
 	import { getContext, onMount } from 'svelte';
 	
   export let count;
-  export let key = "code";
+  export let key = null;
 
 	const { layer } = getContext('layer');
 	const { getMap } = getContext('map');

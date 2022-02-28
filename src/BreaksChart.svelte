@@ -1,5 +1,6 @@
 <script>
-	export let value = null;
+	export let hovered = null;
+	export let selected = null;
 	export let lineWidth = 3;
 	export let height = 15;
 	export let breaks = [0,20,40,60,80,100];
@@ -7,7 +8,7 @@
   export let formatTick = d => d.toFixed(0);
   export let suffix = "";
 	
-	const pos = (val) => {
+	const pos = (val, breaks) => {
 		let i = 0;
 		while (val > breaks[i + 1]) i += 1;
 		let unit = 100 / (breaks.length - 1);
@@ -53,6 +54,10 @@
 		top: -32px;
 		text-align: center;
 		transform: translateX(-50%);
+		background-color: rgba(255,255,255,.8);
+	}
+	.marker-hovered {
+		background-color: orange;
 	}
 </style>
 
@@ -64,8 +69,12 @@
 	{/each}
 	<div class="line" style="left: 100%;"/>
 	<div class="tick" style="left: 100%;">{formatTick(breaks[breaks.length - 1])}{suffix}</div>
-  {#if value}
-	<div class="marker" style="width: {lineWidth}px; left: calc({pos(value)}% - {lineWidth / 2}px);"/>
-	<div class="value" style="left: {pos(value)}%">{value}{suffix}</div>
+	{#if selected}
+	<div class="marker" style="width: {lineWidth}px; left: calc({pos(selected, breaks)}% - {lineWidth / 2}px);"/>
+	<div class="value" style="left: {pos(selected, breaks)}%">{selected}{suffix}</div>
+  {/if}
+  {#if hovered}
+	<div class="marker marker-hovered" style="width: {lineWidth}px; left: calc({pos(hovered, breaks)}% - {lineWidth / 2}px);"/>
+	<div class="value" style="left: {pos(hovered, breaks)}%">{hovered}{suffix}</div>
   {/if}
 </div>

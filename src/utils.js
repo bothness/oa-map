@@ -39,8 +39,15 @@ export function getBreaks(vals, count=5) {
 	return breaks;
 }
 
+export function getCentroid(feature) {
+  let coords = feature.geometry.coordinates;
+  let x = coords[0].map(d => d[0]);
+  let y = coords[0].map(d => d[1]);
+  let center = [(Math.max(...x) + Math.min(...x)) / 2, (Math.max(...y) + Math.min(...y)) / 2];
+  return {type: "Feature", geometry: {type: "Point", coordinates: center}}
+}
+
 export function setUnion(setA, setB) {
-  console.log(setA, setB)
   let _union = new Set(setA)
   for (let elem of setB) {
       _union.add(elem)
@@ -49,7 +56,6 @@ export function setUnion(setA, setB) {
 }
 
 export function setDifference(setA, setB) {
-  console.log(setA, setB)
   let _difference = new Set(setA)
   for (let elem of setB) {
       _difference.delete(elem)
