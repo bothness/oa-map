@@ -69,7 +69,7 @@ export const mapSources = [
 	{
 		id: "msoa",
 		type: "vector",
-		url: "https://cdn.ons.gov.uk/maptiles/administrative/msoa/v1/boundaries/{z}/{x}/{y}.pbf",
+		url: "https://cdn.jsdelivr.net/gh/bothness/map-tiles/msoa/{z}/{x}/{y}.pbf",
 		promoteId: "areacd",
 		layer: "boundaries",
 		maxzoom: 12,
@@ -85,8 +85,8 @@ export const mapSources = [
 	{
 		id: "lsoa",
 		type: "vector",
-		url: "https://cdn.ons.gov.uk/maptiles/administrative/lsoa/v1/boundaries/{z}/{x}/{y}.pbf",
-		promoteId: "AREACD",
+		url: "https://cdn.jsdelivr.net/gh/bothness/map-tiles/lsoa/{z}/{x}/{y}.pbf",
+		promoteId: "areacd",
 		layer: "boundaries",
 		maxzoom: 12,
 		layers: [
@@ -102,9 +102,9 @@ export const mapSources = [
 	{
 		id: "oa",
 		type: "vector",
-		url: "https://cdn.ons.gov.uk/maptiles/t9/{z}/{x}/{y}.pbf",
-		promoteId: "oa11cd",
-		layer: "OA_bound_ethnicity",
+		url: "https://cdn.jsdelivr.net/gh/bothness/map-tiles/oa/{z}/{x}/{y}.pbf",
+		promoteId: "areacd",
+		layer: "boundaries",
 		maxzoom: 12,
 		layers: [
 			{
