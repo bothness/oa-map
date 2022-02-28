@@ -17,7 +17,9 @@
 	let breaks = {};
 	let quads = {};
 	let quads_show = false;
-	let count = 0;
+	let count = 0; // Number of OA quads in view
+	let loaded = 0; // Number of features data has been loaded for
+	let files = 0; // Number of source data files loaded
 	let active = "rgn";
 	let value = null;
 
@@ -60,6 +62,8 @@
 					});
 
 					data[key] = arr;
+					loaded += arr.length;
+					files += 1;
 				});
 			} else {
 				data[key] = [];
@@ -76,7 +80,7 @@
 	}
 
 	function loadData(e, key) {
-		sleep(50).then(() => {
+		sleep(100).then(() => {
 			if (key == active) {
 				let codes = new Set(e.detail.codes);
 				let diff = setDifference(codes, data_quads[key]);
@@ -91,6 +95,8 @@
 						});
 						data[key].push(...arr);
 						data[key] = [...data[key]];
+						loaded += arr.length;
+						files += 1;
 					});
 				});
 			}
@@ -101,23 +107,48 @@
 		if (map) {
 			let newactive = count > 450 ? "rgn" : count > 64 ? "lad" : count > 16 ? "msoa" : count > 4 ? "lsoa" : "oa";
 			if (newactive != active) {
+				const layers = ["rgn", "lad", "msoa", "lsoa", "oa"];
+
+				// Make active layers visible
 				if (map.getLayer(newactive)) map.setLayoutProperty(newactive, 'visibility', 'visible');
 				if (map.getLayer(`${newactive}-line`)) map.setLayoutProperty(`${newactive}-line`, 'visibility', 'visible');
-				if (map.getLayer(active)) map.setLayoutProperty(active, 'visibility', 'none');
-				if (map.getLayer(`${active}-line`)) map.setLayoutProperty(`${active}-line`, 'visibility', 'none');
+				if (map.getLayer(`${newactive}-line`)) map.setPaintProperty(`${newactive}-line`, 'line-width', ['case', ['==', ['feature-state', 'hovered'], true], 2, 0.5]);
+				if (map.getLayer(`${newactive}-quads`) && quads_show) map.setPaintProperty(`${newactive}-quads`, 'line-color', 'rgba(0,0,0,0.5)');
+
+				// Hide all other layers
+				layers.filter(code => code != newactive).forEach(code => {
+					if (map.getLayer(code)) map.setLayoutProperty(code, 'visibility', 'none');
+					if (map.getLayer(`${code}-line`)) map.setLayoutProperty(`${code}-line`, 'visibility', 'none');
+					if (map.getLayer(`${code}-quads`)) map.setPaintProperty(`${code}-quads`, 'line-color', 'rgba(0,0,0,0)');
+				});
+				
+				// Make parent layer line layer visible + thicken line
+				let index = layers.indexOf(newactive);
+				if (index > 0) {
+					let parent = layers[index - 1];
+					if (map.getLayer(`${parent}-line`)) map.setLayoutProperty(`${parent}-line`, 'visibility', 'visible');
+					if (map.getLayer(`${parent}-line`)) map.setPaintProperty(`${parent}-line`, 'line-width', ['case', ['==', ['feature-state', 'hovered'], true], 2, 1.5]);
+				}
+
 				active = newactive;
 			}
 		}
 	}
 	$: toggleLayers(count);
+
+	function toggleQuads() {
+		if (map.getLayer(`${active}-quads`)) map.setPaintProperty(`${active}-quads`, 'line-color', show_quads ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0)');
+	}
 	
 </script>
 
 <section>
 	<div class="wrapper">
     <h1>Output area map test</h1>
+		<strong>{layerNames[active]} layer visible</strong>
+		| Data loaded for {loaded.toLocaleString()} features from {files.toLocaleString()} data files<br/>
 		{count.toLocaleString()} OA quads in view
-		| {layerNames[active]} layer visible<br/>
+		| <label><input type="checkbox" bind:checked={quads_show} on:change={toggleQuads}/> Show quad boudaries (MSOA/LSOA/OA only)</label><br/>
 		{#if data[active] && breaks[active]}
 		<BreaksChart breaks={breaks[active]} {value} suffix="%"/>
 		{/if}
@@ -185,9 +216,9 @@
 		margin-bottom: 20px;
 	  padding: 0;
 	}
-	button {
-		padding: 0 2px;
-		cursor: pointer;
+	label {
+		display: inline-block;
+		margin: 0;
 	}
 	.wrapper {
 		width: 100%;
