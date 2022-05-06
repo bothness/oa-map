@@ -272,6 +272,14 @@
 		display: inline-block;
 		margin: 0;
 	}
+	h1 {
+		font-size: 2em;
+		margin: 5px 0 10px 0;
+	}
+	h2 {
+		font-size: 1.5em;
+		margin: 0 0 5px 0;
+	}
 	.wrapper {
 		width: 100%;
 		max-width: 768px;
