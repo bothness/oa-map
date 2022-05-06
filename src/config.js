@@ -32,23 +32,23 @@ const filter = {
 }
 
 export const mapSources = [
-	{
-		id: "rgn",
-		type: "vector",
-		url: "https://cdn.jsdelivr.net/gh/bothness/map-tiles/authorities/{z}/{x}/{y}.pbf",
-		promoteId: "areacd",
-		layer: "region",
-		maxzoom: 12,
-		layers: [
-			{
-				id: "rgn",
-				type: "fill",
-				paint: paint.fill,
-				filter: filter.rgn,
-				layout: layout.on
-			}
-		]
-	},
+	// {
+	// 	id: "rgn",
+	// 	type: "vector",
+	// 	url: "https://cdn.jsdelivr.net/gh/bothness/map-tiles/authorities/{z}/{x}/{y}.pbf",
+	// 	promoteId: "areacd",
+	// 	layer: "region",
+	// 	maxzoom: 12,
+	// 	layers: [
+	// 		{
+	// 			id: "rgn",
+	// 			type: "fill",
+	// 			paint: paint.fill,
+	// 			filter: filter.rgn,
+	// 			layout: layout.on
+	// 		}
+	// 	]
+	// },
 	{
 		id: "lad",
 		type: "vector",
@@ -62,7 +62,7 @@ export const mapSources = [
 				type: "fill",
 				paint: paint.fill,
 				filter: filter.lad,
-				layout: layout.off
+				layout: layout.on
 			}
 		]
 	},
@@ -82,23 +82,23 @@ export const mapSources = [
 			}
 		]
 	},
-	{
-		id: "lsoa",
-		type: "vector",
-		url: "https://cdn.jsdelivr.net/gh/bothness/map-tiles/lsoa/{z}/{x}/{y}.pbf",
-		promoteId: "areacd",
-		layer: "boundaries",
-		maxzoom: 12,
-		layers: [
-			{
-				id: "lsoa",
-				idKey: "areacd",
-				type: "fill",
-				paint: paint.fill,
-				layout: layout.off
-			}
-		]
-	},
+	// {
+	// 	id: "lsoa",
+	// 	type: "vector",
+	// 	url: "https://cdn.jsdelivr.net/gh/bothness/map-tiles/lsoa/{z}/{x}/{y}.pbf",
+	// 	promoteId: "areacd",
+	// 	layer: "boundaries",
+	// 	maxzoom: 12,
+	// 	layers: [
+	// 		{
+	// 			id: "lsoa",
+	// 			idKey: "areacd",
+	// 			type: "fill",
+	// 			paint: paint.fill,
+	// 			layout: layout.off
+	// 		}
+	// 	]
+	// },
 	{
 		id: "oa",
 		type: "vector",

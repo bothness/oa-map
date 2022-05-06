@@ -10,6 +10,7 @@
 	
 	// Bindings
 	let map = null;
+	let h, w;
 
 	// Data
 	let data = {};
@@ -25,7 +26,7 @@
 	let count = 0; // Number of OA quads in view
 	let loaded = 0; // Number of features data has been loaded for
 	let files = 0; // Number of source data files loaded
-	let active = "rgn"; // Active layer
+	let active = "lad"; // Active layer
 	let hovered_val = null;
 	let selected_val = null;
 
@@ -62,7 +63,8 @@
 		mapSources.map(d => d.id).forEach(key => {
 			breaks[key] = brks[key];
 
-			if (["rgn", "lad"].includes(key)) {
+			// if (["rgn", "lad"].includes(key)) {
+			if (key == "lad") {
 				getData(`./data/ownership/${key}.csv`)
 				.then(arr => {
 					arr.forEach(d => {
@@ -100,7 +102,7 @@
 				source.setData(json);
 
 				let bounds = [[json.properties.minx, json.properties.miny], [json.properties.maxx, json.properties.maxy]];
-				map.fitBounds(bounds, {padding: 20});
+				map.fitBounds(bounds, {padding: 40});
 			});
 		}
 
@@ -135,9 +137,9 @@
 
 	function toggleLayers(count) {
 		if (map) {
-			let newactive = count > 400 ? "rgn" : count > 40 ? "lad" : count > 6 ? "msoa" : count > 1 ? "lsoa" : "oa";
+			let newactive = count * 1e6 / (w * h) > 40 ? "lad" : count * 1e6 / (w * h) > 3 ? "msoa" : "oa";
 			if (newactive != active) {
-				const layers = ["rgn", "lad", "msoa", "lsoa", "oa"];
+				const layers = ["lad", "msoa", "oa"];
 
 				// Make active layers visible
 				if (map.getLayer(newactive)) map.setLayoutProperty(newactive, 'visibility', 'visible');
@@ -172,88 +174,99 @@
 	
 </script>
 
-<section>
+<aside>
 	<div class="wrapper">
     <h1>Output area map test</h1>
-		<strong>{layerNames[active]} layer visible</strong>
-		| Data loaded for {loaded.toLocaleString()} features from {files.toLocaleString()} data files<br/>
-		{count.toLocaleString()} OA quad centoids in view
-		| <label><input type="checkbox" bind:checked={quads_show} on:change={toggleQuads}/> Show quad boudaries (MSOA/LSOA/OA only)</label><br/>
+		<strong>{layerNames[active]} layer visible</strong><br/>
+		Data loaded for {loaded.toLocaleString()} features from {files.toLocaleString()} data files<br/>
+		{count.toLocaleString()} OA quad centoids in view<br/>
+		<label><input type="checkbox" bind:checked={quads_show} on:change={toggleQuads}/> Show quad boudaries (MSOA/OA only)</label><br/>
 		{#if data[active] && breaks[active]}
 		<BreaksChart breaks={breaks[active]} hovered={hovered_val} selected={selected_val} suffix="%"/>
 		{/if}
   </div>
-</section>
+</aside>
 
-<section>
-	<div class="grid">
-		<div>
-			<div class="map">
-			  <Map id="map" style={baseMaps.onsMask} location={{bounds: bounds.ew}} bind:map controls={true}>
-					{#each mapSources as source}
-					<MapSource {...source}>
-						{#if data[source.id]}
-						{#each source.layers as layer}
-						<MapLayer {...layer} data={data[source.id]} order="mask-raster" hover on:hover={doHover} select on:select={doSelect}>
-							<MapTooltip content={hovered && hovered.areanm ? hovered.areanm : hovered && hovered.areacd ? hovered.areacd : ""}/>
-						</MapLayer>
-						<MapLayer
-							id="{source.id}-line"
-							type="line"
-							paint={{
-								'line-color': ['case',
-				  				['==', ['feature-state', 'hovered'], true], 'orange',
-				  				'rgba(0,0,0,0.2)'
-				  			],
-								'line-width': ['case',
-				  				['==', ['feature-state', 'hovered'], true], 2,
-				  				0.5
-				  			]
-							}}
-							layout={{'visibility': source.id == active ? "visible" : "none"}}/>
-						{/each}
-						{/if}
-					</MapSource>
-					{/each}
-					<MapSource id="selected" type="geojson" data={{'type': 'FeatureCollection', 'features': []}}>
-						<MapLayer id="selected" type="line" paint={{'line-color': 'black', 'line-width': 2.5}}/>
-					</MapSource>
-					{#each ['msoa', 'lsoa', 'oa'] as key}
-					{#if quads[key]}
-					<MapSource id="{key}-quads" type="geojson" data={quads[key]}>
-						<MapLayer id="{key}-quads" type="line" paint={{'line-color': 'rgba(0,0,0,0)'}}>
-							<MapCodes on:moveend={e => loadData(e, key)}/>
-						</MapLayer>
-					</MapSource>
-					{/if}
-					{#if centroids}
-					<MapSource id="centroids" type="geojson" data={centroids}>
-						<MapLayer id="centroids" type="circle" paint={{'circle-color': 'rgba(0,0,0,0)'}}>
-							<MapCount bind:count/>
-						</MapLayer>
-					</MapSource>
-					{/if}
-					{/each}
-			  </Map>
-			</div>
-		</div>
-  </div>
-</section>
+<main bind:clientHeight={h} bind:clientWidth={w}>
+	<Map id="map" style={baseMaps.onsMask} location={{bounds: bounds.ew}} bind:map controls={true}>
+		{#if data.lad}
+		{#each mapSources as source}
+		<MapSource {...source}>
+			{#if data[source.id]}
+			{#each source.layers as layer}
+			<MapLayer {...layer} data={data[source.id]} order="mask-raster" hover on:hover={doHover} select on:select={doSelect}>
+				<MapTooltip content={hovered && hovered.areanm ? hovered.areanm : hovered && hovered.areacd ? hovered.areacd : ""}/>
+			</MapLayer>
+			<MapLayer
+				id="{source.id}-line"
+				type="line"
+				paint={{
+					'line-color': ['case',
+						['==', ['feature-state', 'hovered'], true], 'orange',
+						'rgba(0,0,0,0.2)'
+					],
+					'line-width': ['case',
+						['==', ['feature-state', 'hovered'], true], 2,
+						0.5
+					]
+				}}
+				layout={{'visibility': source.id == active ? "visible" : "none"}}/>
+			{/each}
+			{/if}
+		</MapSource>
+		{/each}
+		{/if}
+		<MapSource id="selected" type="geojson" data={{'type': 'FeatureCollection', 'features': []}}>
+			<MapLayer id="selected" type="line" paint={{'line-color': 'black', 'line-width': 2.5}}/>
+		</MapSource>
+		{#each ['msoa', 'oa'] as key}
+		{#if quads[key]}
+		<MapSource id="{key}-quads" type="geojson" data={quads[key]}>
+			<MapLayer id="{key}-quads" type="line" paint={{'line-color': 'rgba(0,0,0,0)'}}>
+				<MapCodes on:moveend={e => loadData(e, key)}/>
+			</MapLayer>
+		</MapSource>
+		{/if}
+		{#if centroids}
+		<MapSource id="centroids" type="geojson" data={centroids}>
+			<MapLayer id="centroids" type="circle" paint={{'circle-color': 'rgba(0,0,0,0)'}}>
+				<MapCount bind:count/>
+			</MapLayer>
+		</MapSource>
+		{/if}
+		{/each}
+	</Map>
+</main>
 
 <style>
-	section {
-		display: -webkit-box;
-		display: -ms-flexbox;
-		display: flex;
-		-webkit-box-pack: center;
-		-ms-flex-pack: center;
-		justify-content: center;
-	  background-position: center;
-	  background-repeat: no-repeat;
-	  background-size: cover;
+	:global(body) {
+		position: relative;
+		margin: 0;
+		padding: 0;
+	}
+	:global(*) {
+		box-sizing: border-box;
+	}
+	main {
+		position: fixed;
+		top: 0;
+		right: 0;
+		width: calc(100% - 400px);
+		height: 100vh;
 	  margin: 0;
-		margin-bottom: 20px;
 	  padding: 0;
+	}
+	aside {
+		position: absolute;
+		z-index: 10;
+		top: 0;
+		left: 0;
+		width: 400px;
+		height: 100vh;
+	  margin: 0;
+		padding: 20px;
+		background-color: white;
+		overflow-y: auto;
 	}
 	label {
 		display: inline-block;
@@ -264,16 +277,18 @@
 		max-width: 768px;
 		margin: 0 16;
 	}
-	.grid {
-		display: grid;
-		width: 100%;
-		max-width: 768px;
-		margin: 0 16;
-		grid-gap: 30px;
-		grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
-		justify-content: stretch;
-	}
-	.map {
-		height: 450px;
+	@media (max-width: 799px) {
+		main {
+			width: 100%;
+			height: 70vh;
+			margin: 0;
+			padding: 0;
+		}
+		aside {
+			top: 70vh;
+			width: 100%;
+			height: fit-content;
+			overflow-y: none;
+		}
 	}
 </style>

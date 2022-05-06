@@ -7,6 +7,7 @@
 	export let colors = ['rgba(234,236,177,.8)', 'rgba(169,216,145,.8)', 'rgba(0,167,186,.8)', 'rgba(0,78,166,.8)', 'rgba(0,13,84,.8)'];
   export let formatTick = d => d.toFixed(0);
   export let suffix = "";
+	export let snapTicks = true;
 	
 	const pos = (val, breaks) => {
 		let i = 0;
@@ -16,6 +17,24 @@
 		return (i + offset) * unit;
 	}
 </script>
+
+<div class="container" style="height: {height}px">
+	{#each breaks.slice(1) as brk, i}
+		<div class="block" style="width: {100 / (breaks.length - 1)}%; left: {i * (100 / (breaks.length - 1))}%; background-color: {colors[i]};"/>
+		<div class="line" style="left: {i * (100 / (breaks.length - 1))}%;"/>
+		<div class="tick" style="left: {i * (100 / (breaks.length - 1))}%; transform: translateX({i == 0 && snapTicks ? '-2px' : '-50%'});">{formatTick(breaks[i])}</div>
+	{/each}
+	<div class="line" style="right: 0;"/>
+	<div class="tick" style="right: 0; transform: translateX({snapTicks ? '2px' : '50%'});">{formatTick(breaks[breaks.length - 1])}{suffix}</div>
+	{#if selected}
+	<div class="marker" style="width: {lineWidth}px; left: calc({pos(selected, breaks)}% - {lineWidth / 2}px);"/>
+	<div class="value" style="left: {pos(selected, breaks)}%">{selected}{suffix}</div>
+  {/if}
+  {#if hovered}
+	<div class="marker marker-hovered" style="width: {lineWidth}px; left: calc({pos(hovered, breaks)}% - {lineWidth / 2}px);"/>
+	<div class="value" style="left: {pos(hovered, breaks)}%">{hovered}{suffix}</div>
+  {/if}
+</div>
 
 <style>
 	.container {
@@ -60,21 +79,3 @@
 		background-color: orange;
 	}
 </style>
-
-<div class="container" style="height: {height}px">
-	{#each breaks.slice(1) as brk, i}
-		<div class="block" style="width: {100 / (breaks.length - 1)}%; left: {i * (100 / (breaks.length - 1))}%; background-color: {colors[i]};"/>
-		<div class="line" style="left: {i * (100 / (breaks.length - 1))}%;"/>
-		<div class="tick" style="left: {i * (100 / (breaks.length - 1))}%;">{formatTick(breaks[i])}</div>
-	{/each}
-	<div class="line" style="left: 100%;"/>
-	<div class="tick" style="left: 100%;">{formatTick(breaks[breaks.length - 1])}{suffix}</div>
-	{#if selected}
-	<div class="marker" style="width: {lineWidth}px; left: calc({pos(selected, breaks)}% - {lineWidth / 2}px);"/>
-	<div class="value" style="left: {pos(selected, breaks)}%">{selected}{suffix}</div>
-  {/if}
-  {#if hovered}
-	<div class="marker marker-hovered" style="width: {lineWidth}px; left: calc({pos(hovered, breaks)}% - {lineWidth / 2}px);"/>
-	<div class="value" style="left: {pos(hovered, breaks)}%">{hovered}{suffix}</div>
-  {/if}
-</div>
